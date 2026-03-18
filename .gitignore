@@ -14,3 +14,7 @@ override.tf.json
 *.tfvars
 *.tfvars.json
 !.tfvars.example
+
+docker/.env.local
+docker/postgres/data/*
+!docker/postgres/data/.gitkeep
