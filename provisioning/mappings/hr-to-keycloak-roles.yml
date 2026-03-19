@@ -1,0 +1,5 @@
+mappings:
+  manager:
+    - admin
+  employee:
+    - viewer

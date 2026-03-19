@@ -1,0 +1,5 @@
+{
+  "topic": "identity-provisioning-events",
+  "partitions": 3,
+  "replication_factor": 1
+}

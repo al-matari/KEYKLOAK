@@ -1,0 +1,12 @@
+http:
+  routers:
+    keycloak:
+      rule: Host(`sso.local.test`)
+      entryPoints:
+        - web
+      service: keycloak
+  services:
+    keycloak:
+      loadBalancer:
+        servers:
+          - url: http://keycloak:8080

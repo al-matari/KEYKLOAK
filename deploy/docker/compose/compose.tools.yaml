@@ -1,0 +1,63 @@
+services:
+  adminer:
+    image: ${ADMINER_IMAGE:-adminer:latest}
+    depends_on:
+      - postgres
+    env_file:
+      - ../env/adminer.env
+    ports:
+      - "${ADMINER_PORT:-8088}:8080"
+    restart: unless-stopped
+
+  keycloak-tools:
+    build:
+      context: ../../..
+      dockerfile: images/tools/Dockerfile
+    depends_on:
+      - keycloak
+      - postgres
+    env_file:
+      - ../env/keycloak-tools.env
+    secrets:
+      - source: keycloak_admin_password
+        target: keycloak_admin_password
+      - source: keycloak_db_password
+        target: keycloak_db_password
+    entrypoint: ["/bin/sh", "-lc"]
+    command: "sleep infinity"
+    stdin_open: true
+    tty: true
+    working_dir: /workspace
+    volumes:
+      - ../../../images/tools/scripts:/opt/tools:ro
+      - ../../../configs/keycloak:/workspace/configs/keycloak:ro
+      - ../../../artifacts:/workspace/artifacts
+      - ../../../tmp:/workspace/tmp
+    restart: unless-stopped
+
+  provisioning-runner:
+    build:
+      context: ../../..
+      dockerfile: images/provisioning/Dockerfile
+    depends_on:
+      - keycloak
+      - postgres
+    env_file:
+      - ../env/provisioning-runner.env
+    secrets:
+      - source: keycloak_admin_password
+        target: keycloak_admin_password
+      - source: keycloak_db_password
+        target: keycloak_db_password
+    entrypoint: ["/bin/sh", "-lc"]
+    command: "sleep infinity"
+    stdin_open: true
+    tty: true
+    working_dir: /workspace
+    volumes:
+      - ../../../images/provisioning/scripts:/opt/provisioning:ro
+      - ../../../provisioning:/workspace/provisioning:ro
+      - ../../../configs/keycloak:/workspace/configs/keycloak:ro
+      - ../../../artifacts:/workspace/artifacts
+      - ../../../tmp:/workspace/tmp
+    restart: unless-stopped

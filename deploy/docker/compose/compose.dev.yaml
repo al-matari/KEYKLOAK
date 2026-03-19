@@ -1,0 +1,11 @@
+services:
+  keycloak:
+    env_file:
+      - ../env/keycloak.dev.env
+    ports:
+      - "${KEYCLOAK_DEBUG_PORT:-8787}:8787"
+    stdin_open: true
+    tty: true
+    volumes:
+      - ../../../configs/keycloak/dev/keycloak.conf:/opt/keycloak/conf/keycloak.conf:ro
+      - ../../../configs/keycloak/dev/realm-import:/opt/keycloak/data/import-source:ro

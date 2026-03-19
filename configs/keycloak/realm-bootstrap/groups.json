@@ -1,0 +1,10 @@
+[
+  {
+    "name": "admins",
+    "realm_roles": ["admin"]
+  },
+  {
+    "name": "developers",
+    "realm_roles": ["developer", "viewer"]
+  }
+]

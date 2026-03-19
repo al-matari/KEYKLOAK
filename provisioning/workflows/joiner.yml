@@ -1,0 +1,5 @@
+name: joiner
+steps:
+  - create-user
+  - assign-groups
+  - assign-roles

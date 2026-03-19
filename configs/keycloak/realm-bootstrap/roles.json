@@ -1,0 +1,10 @@
+[
+  {
+    "name": "admin",
+    "description": "Realm administrator"
+  },
+  {
+    "name": "viewer",
+    "description": "Read-only access"
+  }
+]

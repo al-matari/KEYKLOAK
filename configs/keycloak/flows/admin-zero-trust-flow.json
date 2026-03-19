@@ -1,0 +1,5 @@
+{
+  "alias": "admin-zero-trust",
+  "description": "Placeholder flow for stronger admin authentication requirements.",
+  "executions": []
+}

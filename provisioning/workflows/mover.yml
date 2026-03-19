@@ -1,0 +1,4 @@
+name: mover
+steps:
+  - update-attributes
+  - reconcile-groups

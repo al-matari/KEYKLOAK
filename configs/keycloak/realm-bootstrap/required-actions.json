@@ -1,0 +1,8 @@
+[
+  {
+    "alias": "UPDATE_PASSWORD"
+  },
+  {
+    "alias": "CONFIGURE_TOTP"
+  }
+]

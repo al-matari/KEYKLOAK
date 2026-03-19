@@ -47,14 +47,15 @@ terraform/
 
 ## Lokal ausfuehren
 
-Zuerst den lokalen Docker-Stack aus dem Repository-Root starten:
+Zuerst den lokalen Compose-Stack aus dem Repository-Root starten:
 
 ```bash
-cp docker/.env.local.example docker/.env.local
-docker compose --env-file docker/.env.local -f docker/compose.local.yml up -d --build
+cp .env.example .env.local
+make up
+make wait
 ```
 
-Danach Terraform ausfuehren:
+Der Stack laeuft damit bereits ohne Terraform. Fuer die optionale Provisionierung fuehrst du Terraform erst danach aus:
 
 ```bash
 terraform -chdir=terraform init
@@ -62,7 +63,21 @@ terraform -chdir=terraform plan -var-file=envs/local/terraform.tfvars
 terraform -chdir=terraform apply -var-file=envs/local/terraform.tfvars
 ```
 
+Alternativ gibt es im Repository-Root den Komfort-Target:
+
+```bash
+make provision-local
+```
+
 `envs/local/terraform.tfvars` ist auf `http://localhost:8080`, SMTP auf `localhost:1025` und Passwort-Grant ueber `admin-cli` ausgelegt.
+
+Optional koennen noch Monitoring und Tools aktiviert werden:
+
+```bash
+make kafka-up
+make monitoring-up
+make tools-up
+```
 
 ## Neues Environment anlegen
 

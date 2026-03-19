@@ -1,0 +1,31 @@
+services:
+  kafka:
+    image: ${KAFKA_IMAGE:-docker.redpanda.com/redpandadata/redpanda:v24.1.18}
+    env_file:
+      - ../env/kafka.env
+    command:
+      - redpanda
+      - start
+      - --overprovisioned
+      - --smp=1
+      - --memory=1G
+      - --reserve-memory=0M
+      - --node-id=0
+      - --check=false
+      - --kafka-addr=PLAINTEXT://0.0.0.0:9092,OUTSIDE://0.0.0.0:19092
+      - --advertise-kafka-addr=PLAINTEXT://kafka:9092,OUTSIDE://localhost:${KAFKA_PORT:-19092}
+      - --pandaproxy-addr=0.0.0.0:8082
+      - --advertise-pandaproxy-addr=PLAINTEXT://kafka:8082
+    ports:
+      - "${KAFKA_PORT:-19092}:19092"
+    restart: unless-stopped
+
+  kafka-console:
+    image: ${KAFKA_UI_IMAGE:-docker.redpanda.com/redpandadata/console:v2.6.2}
+    depends_on:
+      - kafka
+    env_file:
+      - ../env/kafka-console.env
+    ports:
+      - "${KAFKA_UI_PORT:-8089}:8080"
+    restart: unless-stopped

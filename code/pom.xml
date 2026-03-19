@@ -1,0 +1,31 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>com.example.keycloak</groupId>
+  <artifactId>keycloak-enterprise</artifactId>
+  <version>0.1.0-SNAPSHOT</version>
+  <packaging>pom</packaging>
+
+  <modules>
+    <module>shared</module>
+    <module>providers/authenticator</module>
+    <module>providers/required-action</module>
+    <module>providers/protocol-mapper</module>
+    <module>providers/event-listener</module>
+    <module>providers/rest-extension</module>
+    <module>providers/identity-provider-mapper</module>
+    <module>providers/authorization</module>
+    <module>providers/user-storage</module>
+    <module>services/provisioning-service</module>
+    <module>services/risk-engine</module>
+    <module>services/audit-consumer</module>
+  </modules>
+
+  <properties>
+    <maven.compiler.source>17</maven.compiler.source>
+    <maven.compiler.target>17</maven.compiler.target>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
+</project>

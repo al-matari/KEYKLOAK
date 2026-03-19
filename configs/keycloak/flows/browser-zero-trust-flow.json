@@ -1,0 +1,5 @@
+{
+  "alias": "browser-zero-trust",
+  "description": "Placeholder flow for risk-based browser login and step-up requirements.",
+  "executions": []
+}

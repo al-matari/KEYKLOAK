@@ -1,0 +1,3 @@
+entitlements:
+  jira-admin: admin
+  readonly-portal: viewer

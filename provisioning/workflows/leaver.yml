@@ -1,0 +1,4 @@
+name: leaver
+steps:
+  - disable-user
+  - revoke-sessions

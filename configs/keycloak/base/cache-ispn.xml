@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Advanced Keycloak cache customization only.
+  Preferred and supported cache tuning should live in keycloak.conf via
+  cache-embedded-*-max-count options, especially for local development.
+  Keep XML overrides as the exception, not the default tuning path.
+-->
+<infinispan xmlns="urn:infinispan:config:14.0">
+  <cache-container name="keycloak">
+    <local-cache name="realms" />
+    <local-cache name="users" />
+    <local-cache name="sessions" />
+  </cache-container>
+</infinispan>

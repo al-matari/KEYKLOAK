@@ -1,0 +1,4 @@
+name: rehire
+steps:
+  - re-enable-user
+  - reconcile-entitlements
