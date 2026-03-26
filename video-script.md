@@ -185,6 +185,8 @@ My first thoughts.
 
 Because of my background in java, i used here ChatGpt to check how kotlin handle this issue and found that In Kotlin, data class is risky for JPA. Because the relevant methods are automatically generated. And regular classes are recommended at this place.
 
+In a relational model with linked entities, that can lead to recursion, lazy-loading side effects
+
 Problem: JPA entities were modeled as Kotlin data classes, which is risky because important methods are generated automatically.
 Fix: First, I replaced the JPA data class entities with regular classes and added explicit `toString()`, `equals()`, and `hashCode()` implementations.
 
