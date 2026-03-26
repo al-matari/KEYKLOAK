@@ -2,36 +2,39 @@
 
 On screen: repository root, README, then running application
 
-Hi, and welcome to my walkthrough for the Code Challenge.
+Hi everyone, and welcome to my solution review for the Code Challenge.
 
-In this video, I want to explain how I approached the challenge, what problems I found, how I prioritized them, and what I changed on both backend and frontend to make the application more correct and more robust.
+And by the way welcome to my first youtube video.
+
+I want to explain how I handled the challenge, what problems I found, how I ranked them, and what I changed to make the application more correct and robust.
 
 My goal was to treat it like a real engineering task.
 So instead of only fixing isolated issues, I reviewed the full request flow end to end:
-controller, service, repository, entity model, DTO mapping, API client, and React state management.
+From data base to the UI
 
-I split the work into four phases:
+I split the work into 3 phases:
 
 - understand the expected product behavior
-- review the backend and document issues
-- review the frontend and document issues
-- implement targeted fixes and keep the trade-offs explicit
+- review the backend
+- review the frontend
 
-# 1:15 to 2:15 - Scope and Expected Flows
+I reviewed both parts, noted the issues, implemented the main fixes, explained the trade-offs, and suggested possible improvements.
+
+# Scope and Expected Flows
 
 On screen: challenge description, README sections, and API overview
 
-I started by reading the challenge material and the repository documentation to understand the expected scope.
+I started by reading the challenge material and the documentation to understand the expected scope.
 
 The README describes the app as a team portal for team performance metrics and real-time activity monitoring.
 
-The application is built around three main user-facing flows:
+The application is built around three main flows:
 
 - a dashboard that shows team statistics
 - a live activity feed
 - a user profile page with recent activity
 
-And underneath those flows, there are three main API paths:
+And behind those flows, there are three main API paths:
 
 - `GET /api/teams/{team}/stats`
 - `GET /api/activities/feed`
@@ -39,7 +42,7 @@ And underneath those flows, there are three main API paths:
 
 # 2:15 to 6:00 - Backend Review and Main Findings
 
-On screen: backend package structure and selected Kotlin files
+#### On screen: backend package structure and selected Kotlin files
 
 I decided to start with the backend because it defines the contract the frontend relies on.
 
@@ -48,32 +51,26 @@ I checked Spring Boot startup, bean creation, and configuration, just to make su
 
 After that, I focused on the project structure, API design, layers, data flow, domain model, and overall business logic.
 
-On screen: Postman collection, API requests, and backend responses
 
 ## API
+#### On screen: Postman collection, API requests, and backend responses
 
 I analyzed the API first.
 
 To make this easier, I created a Postman collection with happy paths and invalid input cases.
-This helped me clearly see requests and responses and test different scenarios isolated from the frontend.
-For quick collection creation i used codex.
+This helped me see requests and responses and test different scenarios isolated from the frontend.
+For quick creation i used codex for this task.
 
-I focused on:
-
-- error messages
-- response structure
-- HTTP status codes
-
-And I compared the responses with the expected structure.
+I focused on  response structure, error messages, HTTP status codes and I compared the responses with the expected structure.
 
 The main issues I found were:
 
 - missing team returned 500 instead of 404
+- fetching the feed triggered many SQL queries, which looked like an N+1 problem
 - `userName` was null in the feed response
 - feed ordering looked correct, but was not guaranteed by the service contract
 - missing or invalid user returned 200 with an empty array
 - validation and error flows were mostly missing
-- fetching the feed triggered many SQL queries, which looked like an N+1 problem
 
 On screen: controller to repository flow, endpoint diagrams, and DTO mapping
 
