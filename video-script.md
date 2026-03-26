@@ -4,13 +4,13 @@ On screen: repository root, README, then running application
 
 Hi everyone, and welcome to my solution review for the Code Challenge.
 
-And by the way welcome to my first youtube video.
+And by the way welcome to my first youtube video ever.
 
-I want to explain how I handled the challenge, what problems I found, how I ranked them, and what I changed to make the application more correct and robust.
+In this video, I want to explain how I handled the challenge, what problems I found, how I ranked them, and what I changed on both backend and frontend to make the application more correct and more robust.
 
 My goal was to treat it like a real engineering task.
 So instead of only fixing isolated issues, I reviewed the full request flow end to end:
-From data base to the UI
+controller, service, repository, entity model, DTO mapping, API client, and React state management.
 
 I split the work into 3 phases:
 
@@ -24,11 +24,11 @@ I reviewed both parts, noted the issues, implemented the main fixes, explained t
 
 On screen: challenge description, README sections, and API overview
 
-I started by reading the challenge material and the documentation to understand the expected scope.
+I started by reading the challenge material and the repository documentation to understand the expected scope.
 
 The README describes the app as a team portal for team performance metrics and real-time activity monitoring.
 
-The application is built around three main flows:
+The application is built around three main user-facing flows:
 
 - a dashboard that shows team statistics
 - a live activity feed
@@ -179,46 +179,61 @@ I created a develop branch and kept main stable, so main always stayed in a clea
 
 To fix the backend, I started by making the model more explicit.
 
-First, I replaced the JPA data class entities with regular classes and added explicit `toString()`, `equals()`, and `hashCode()` implementations.
+Problem: JPA entities were modeled as Kotlin data classes, which is risky because important methods are generated automatically.
+Fix: First, I replaced the JPA data class entities with regular classes and added explicit `toString()`, `equals()`, and `hashCode()` implementations.
 
-Second, I removed stored `Team.members` and derived it from `users.size`.
+Problem: the team member count did not match the actual number of users.
+Fix: Second, I removed stored `Team.members` and derived it from `users.size`.
 That avoids drift between stored member count and actual membership.
 
-Third, I simplified the Team to User association to a unidirectional mapping.
+Problem: risky models and tightly coupled relations
+Fix: Third, I simplified the Team to User association to a unidirectional mapping.
 I removed the team reference from `User` and kept `Team.users`.
 That reduced relationship coupling and lazy-loading risk.
 
-I also fixed the ownership issue between `User.activities` and `Activity.user`.
+Problem: the ownership between `User.activities` and `Activity.user` was inconsistent, because the child relation was nullable
+Fix: I also fixed the ownership issue between `User.activities` and `Activity.user`.
 I made `user_id` non-null, because an activity without a user is not valid.
 And I added cascade and orphan removal so activities are managed together with the user.
 
-Then I fixed the timestamp issue by adding a JPA `@PrePersist` hook that sets the timestamp only before insert if no value is present.
+Problem: `Activity.timestamp` was tied to object creation instead of persistence time
+Fix: Then I fixed the timestamp issue by adding a JPA `@PrePersist` hook that sets the timestamp only before insert if no value is present.
 For this challenge that was good enough, even though a database default would be cleaner in production.
 
 ## Service and Query Layer
 
-I completed the mapper with `userName: activity.user.name`.
+Problem: `userName` was null in the feed response
+Fix: I completed the mapper with `userName: activity.user.name`.
 
-Then I fixed the N+1 problem and feed ordering.
+Problem: the feed query caused an N+1 problem because related user data was loaded inefficiently
+Fix: Then I fixed the N+1 problem and feed ordering.
 I added one ordered feed query with eager user loading:
 `findFeedActivities()` with `join fetch a.user` and `order by a.timestamp desc`.
 
-I switched `ActivityService` to use that query instead of `findAll` for the live feed.
+Problem: feed ordering was not guaranteed by the repository query
+Fix: I switched `ActivityService` to use that query instead of `findAll` for the live feed.
 
 I used `JOIN FETCH` here because it was the most direct solution for this query.
 
 ## Exceptions and Validation
 
-After that, I added a global exception handler to centralize exception handling.
-I added not-found handling for missing teams and users.
+Problem: validation and error flows were mostly missing
+Fix: After that, I added a global exception handler to centralize exception handling.
 I also added endpoint validation for controller path variables and JPA validation for entity fields.
 
-I added explicit user existence checks before loading activities.
+Problem: missing team returned 500 instead of 404
+Fix: I added not-found handling for missing teams and users.
+
+Problem: missing users were not handled explicitly, so the API returned an empty list instead of a clear error
+Fix: I added explicit user existence checks before loading activities.
 
 ## Config
 
-Last, I externalized the CORS configuration into YAML to avoid hardcoding and improve flexibility across environments.
-I also restricted it to only the needed methods and headers.
+Problem: CORS configuration was hardcoded in the application instead of being externalized
+Fix: Last, I externalized the CORS configuration into YAML to avoid hardcoding and improve flexibility across environments.
+
+Problem: the allowed origins, methods, and headers were broader than needed
+Fix: I also restricted it to only the needed methods and headers.
 
 # 9:45 to 12:15 - Frontend Review
 
@@ -262,7 +277,8 @@ On screen: `mockApi.ts`, shared API helpers, React effects, and UI states
 
 After identifying the issues, I started to introduce the fixes.
 
-First, I added shared API error handling.
+Problem: the API layer handled only happy paths, with no proper loading or error handling.
+Fix: First, I added shared API error handling.
 
 - I added `parseErrorMessage(...)` to extract backend `message` values when available
 - I added a reusable `fetchJson<T>(path)` helper that checks the backend response and throws a real `Error` on failed requests
@@ -274,20 +290,25 @@ This gave three main benefits:
 - preserved backend validation and not-found messages for the UI
 - reduced duplicate fetch logic across components
 
-I also externalized the models into `api.model.ts` for better overview and cleaner structure.
+Problem: API contracts and fetching were in the same file, `mockApi.ts`.
+Fix: I also externalized the models into `api.model.ts` for better overview and cleaner structure.
 
-After that, I fixed `UserProfile` so user activity loads only once on mount.
+Problem: On the user profile page, activity loading ran again and again, which caused constant re-rendering.
+Fix: After that, I fixed `UserProfile` so user activity loads only once on mount.
 I added `[]` as the dependency array for the activity-loading effect.
 Then I added `loading` and `error` state so users get clearer feedback during loading and failure.
 
-Then I fixed dashboard auto-refresh cleanup.
+Problem: On the dashboard, I saw problems with polling cleanup, missing error feedback, and some loading flicker.
+Fix: Then I fixed dashboard auto-refresh cleanup.
 I cleared the polling interval when auto-refresh stops, when the selected team changes, and when the component unmounts.
 I also added an ignore guard for safe async handling, and added error UI for team stats failures.
 
-Then I changed live feed syncing from append to snapshot replacement.
+Problem: In the live feed, the backend returned a full new list each time, but the component appended it to the old list instead of replacing it.
+Fix: Then I changed live feed syncing from append to snapshot replacement.
 Instead of adding the new list on top of the old one, the component now replaces it.
 
-I also added error and loading states to the live feed and introduced request guarding.
+Problem: And across these views, request cancellation or guarding was missing, which could lead to overlapping calls and inconsistent state.
+Fix: I also added error and loading states to the live feed and introduced request guarding.
 I used one effect for both initial loading and refreshing.
 The loading state is shown only on the first load, so background polling stays smoother for the user.
 
