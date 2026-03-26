@@ -167,6 +167,8 @@ But the main problems were:
 - missing error handling and validation
 - incomplete DTO mapping
 - performance risk due to N+1 queries
+- hardcoded and less flexible for different enveriment
+- allo configs were broader than needed
 
 # 6:00 to 9:45 - Backend Fixes
 
@@ -179,12 +181,14 @@ I created a develop branch and kept main stable, so main always stayed in a clea
 
 To fix the backend, I started by making the model more explicit.
 
-Problem: JPA entities were modeled as Kotlin data classes, which is risky because important methods are generated automatically.
-Fix: First, I replaced the JPA data class entities with regular classes and added explicit `toString()`, `equals()`, and `hashCode()` implementations.
-
 Problem: the team member count did not match the actual number of users.
 Fix: Second, I removed stored `Team.members` and derived it from `users.size`.
 That avoids drift between stored member count and actual membership.
+
+Problem: JPA entities were modeled as Kotlin data classes, which is risky because important methods are generated automatically.
+Fix: First, I replaced the JPA data class entities with regular classes and added explicit `toString()`, `equals()`, and `hashCode()` implementations.
+
+
 
 Problem: risky models and tightly coupled relations
 Fix: Third, I simplified the Team to User association to a unidirectional mapping.
