@@ -1,0 +1,326 @@
+# 0:00 to 1:15 - Introduction
+
+On screen: repository root, README, then running application
+
+Hi, and welcome to my walkthrough for the Code Challenge.
+
+In this video, I want to explain how I approached the challenge, what problems I found, how I prioritized them, and what I changed on both backend and frontend to make the application more correct and more robust.
+
+My goal was to treat it like a real engineering task.
+So instead of only fixing isolated issues, I reviewed the full request flow end to end:
+controller, service, repository, entity model, DTO mapping, API client, and React state management.
+
+I split the work into four phases:
+
+- understand the expected product behavior
+- review the backend and document issues
+- review the frontend and document issues
+- implement targeted fixes and keep the trade-offs explicit
+
+# 1:15 to 2:15 - Scope and Expected Flows
+
+On screen: challenge description, README sections, and API overview
+
+I started by reading the challenge material and the repository documentation to understand the expected scope.
+
+The README describes the app as a team portal for team performance metrics and real-time activity monitoring.
+
+The application is built around three main user-facing flows:
+
+- a dashboard that shows team statistics
+- a live activity feed
+- a user profile page with recent activity
+
+And underneath those flows, there are three main API paths:
+
+- `GET /api/teams/{team}/stats`
+- `GET /api/activities/feed`
+- `GET /api/users/{id}/activities`
+
+# 2:15 to 6:00 - Backend Review and Main Findings
+
+On screen: backend package structure and selected Kotlin files
+
+I decided to start with the backend because it defines the contract the frontend relies on.
+
+Before looking into logic issues, I made sure the application starts cleanly.
+I checked Spring Boot startup, bean creation, and configuration, just to make sure I was not debugging setup problems.
+
+After that, I focused on the project structure, API design, layers, data flow, domain model, and overall business logic.
+
+On screen: Postman collection, API requests, and backend responses
+
+## API
+
+I analyzed the API first.
+
+To make this easier, I created a Postman collection with happy paths and invalid input cases.
+This helped me clearly see requests and responses and test different scenarios isolated from the frontend.
+For quick collection creation i used codex.
+
+I focused on:
+
+- error messages
+- response structure
+- HTTP status codes
+
+And I compared the responses with the expected structure.
+
+The main issues I found were:
+
+- missing team returned 500 instead of 404
+- `userName` was null in the feed response
+- feed ordering looked correct, but was not guaranteed by the service contract
+- missing or invalid user returned 200 with an empty array
+- validation and error flows were mostly missing
+- fetching the feed triggered many SQL queries, which looked like an N+1 problem
+
+On screen: controller to repository flow, endpoint diagrams, and DTO mapping
+
+## Data Flow
+
+After that, I analyzed the data flow.
+
+For example, in the team stats flow, the request goes from controller to service to repository to entity to DTO to response.
+That part is clear and well structured.
+
+The activity-related flows were weaker.
+In the feed endpoint, accessing `activity.user.name` likely caused the N+1 problem.
+And in the user activities endpoint, the user data was not properly mapped, which is why `userName` was null.
+
+I also noticed that error flows were mostly missing.
+The system focused on happy paths, but did not properly handle edge cases.
+
+## Controller Layer
+
+Then I reviewed the controller layer.
+
+The good part is that controllers are relatively clean.
+They mainly handle HTTP requests and responses, and do not contain business logic.
+
+But there were still some issues.
+There was no validation for inputs, for example invalid IDs or empty values.
+And error handling was weak, because the API returned generic 500 errors instead of meaningful responses like 400 or 404.
+
+On screen: H2 console, `data.sql`, and team membership values
+
+## Database Layer
+
+Then I looked at the database layer.
+H2 is used, and the schema and seed data are recreated on startup.
+
+Here I found an inconsistency issue:
+the team member count did not match the actual number of users.
+That created a duplicated source of truth.
+
+Example:
+Team 1 had 4 users, but `members = 12`.
+
+On screen: entity classes and relationship mappings
+
+## Model Layer
+
+After that I analyzed the entities and the relations between them.
+
+The main problems here were:
+
+- JPA entities were modeled as Kotlin data classes, which is risky because important methods are generated automatically.
+  Because of my background in java, i used here ChatGpt to check how kotlin handle this issue and found that In Kotlin, data class is risky for JPA. Because the relevant methods are automatically generated. And regular classes are recommended at this place.
+- fields did not have strong enough validation
+- the ownership between `User.activities` and `Activity.user` was inconsistent, because the child relation was nullable
+- `user.activities` was immutable, which is a bad fit for JPA collection handling
+- `Activity.timestamp` was tied to object creation instead of persistence time
+
+## service and repository Layer
+
+After that I analyzed service and repository Layers.
+
+The main problems here were:
+
+- feed ordering was not guaranteed by the repository query
+- the feed query caused an N+1 problem because related user data was loaded inefficiently
+- the mapping was incomplete, which is why `userName` was null in the response
+- missing users were not handled explicitly, so the API returned an empty list instead of a clear error
+- validation and error handling were not strong enough in the service flow
+
+
+## config Layer
+
+After that I analyzed config Layers.
+
+The main problems here were:
+
+
+The main problems here were:
+
+- CORS configuration was hardcoded in the application instead of being externalized
+- the configuration was less flexible for different environments
+- the allowed origins, methods, and headers were broader than needed
+- the setup was harder to maintain because config and application logic were mixed together
+- changing the configuration for another environment would require a code change instead of a simple config update
+
+## Conclusion
+
+So overall, the backend structure was understandable and mostly clean.
+
+But the main problems were:
+
+- consistency issues
+- risky models and tightly coupled relations
+- missing error handling and validation
+- incomplete DTO mapping
+- performance risk due to N+1 queries
+
+# 6:00 to 9:45 - Backend Fixes
+
+On screen: changed backend files, entity classes, repository queries, and exception handling
+
+Before starting the fixes, I set up a clean Git strategy.
+I created a develop branch and kept main stable, so main always stayed in a clean working state.
+
+## Model
+
+To fix the backend, I started by making the model more explicit.
+
+First, I replaced the JPA data class entities with regular classes and added explicit `toString()`, `equals()`, and `hashCode()` implementations.
+
+Second, I removed stored `Team.members` and derived it from `users.size`.
+That avoids drift between stored member count and actual membership.
+
+Third, I simplified the Team to User association to a unidirectional mapping.
+I removed the team reference from `User` and kept `Team.users`.
+That reduced relationship coupling and lazy-loading risk.
+
+I also fixed the ownership issue between `User.activities` and `Activity.user`.
+I made `user_id` non-null, because an activity without a user is not valid.
+And I added cascade and orphan removal so activities are managed together with the user.
+
+Then I fixed the timestamp issue by adding a JPA `@PrePersist` hook that sets the timestamp only before insert if no value is present.
+For this challenge that was good enough, even though a database default would be cleaner in production.
+
+## Service and Query Layer
+
+I completed the mapper with `userName: activity.user.name`.
+
+Then I fixed the N+1 problem and feed ordering.
+I added one ordered feed query with eager user loading:
+`findFeedActivities()` with `join fetch a.user` and `order by a.timestamp desc`.
+
+I switched `ActivityService` to use that query instead of `findAll` for the live feed.
+
+I used `JOIN FETCH` here because it was the most direct solution for this query.
+
+## Exceptions and Validation
+
+After that, I added a global exception handler to centralize exception handling.
+I added not-found handling for missing teams and users.
+I also added endpoint validation for controller path variables and JPA validation for entity fields.
+
+I added explicit user existence checks before loading activities.
+
+## Config
+
+Last, I externalized the CORS configuration into YAML to avoid hardcoding and improve flexibility across environments.
+I also restricted it to only the needed methods and headers.
+
+# 9:45 to 12:15 - Frontend Review
+
+On screen: frontend folder structure, main React components, and app navigation
+
+Once the backend was clearer and more robust, I moved to the frontend.
+
+I clicked through the UI views and reviewed the project structure.
+The application is built around three main pages:
+
+- Dashboard
+- LiveFeed
+- UserProfile
+
+Since I come from an Angular background and this project is built with React, I mainly focused on core frontend concepts such as structure, rendering, state management, UI stability, API integration, and error handling.
+
+First, I checked the component structure.
+It was clean and modular, but everything sat in one folder, which could get messy as the project grows.
+
+After that, I analyzed state management and data flow.
+State lived in the main components and data came from a mock API, then flowed down into the UI.
+
+Then I checked API integration.
+API contracts and fetching were in the same file, `mockApi.ts`.
+And the API layer handled only happy paths, with no proper loading or error handling.
+
+Then I reviewed each main screen.
+
+On the dashboard, I saw problems with polling cleanup, missing error feedback, and some loading flicker.
+
+On the user profile page, activity loading ran again and again, which caused constant re-rendering.
+
+In the live feed, the backend returned a full new list each time, but the component appended it to the old list instead of replacing it.
+That caused duplicate entries.
+
+And across these views, request cancellation or guarding was missing, which could lead to overlapping calls and inconsistent state.
+
+# 12:15 to 14:30 - Frontend Fixes
+
+On screen: `mockApi.ts`, shared API helpers, React effects, and UI states
+
+After identifying the issues, I started to introduce the fixes.
+
+First, I added shared API error handling.
+
+- I added `parseErrorMessage(...)` to extract backend `message` values when available
+- I added a reusable `fetchJson<T>(path)` helper that checks the backend response and throws a real `Error` on failed requests
+- then I switched `fetchTeamStats`, `fetchFeedActivity`, and `fetchUserActivity` to that shared helper
+
+This gave three main benefits:
+
+- centralized request error handling in one place
+- preserved backend validation and not-found messages for the UI
+- reduced duplicate fetch logic across components
+
+I also externalized the models into `api.model.ts` for better overview and cleaner structure.
+
+After that, I fixed `UserProfile` so user activity loads only once on mount.
+I added `[]` as the dependency array for the activity-loading effect.
+Then I added `loading` and `error` state so users get clearer feedback during loading and failure.
+
+Then I fixed dashboard auto-refresh cleanup.
+I cleared the polling interval when auto-refresh stops, when the selected team changes, and when the component unmounts.
+I also added an ignore guard for safe async handling, and added error UI for team stats failures.
+
+Then I changed live feed syncing from append to snapshot replacement.
+Instead of adding the new list on top of the old one, the component now replaces it.
+
+I also added error and loading states to the live feed and introduced request guarding.
+I used one effect for both initial loading and refreshing.
+The loading state is shown only on the first load, so background polling stays smoother for the user.
+
+# 14:30 to 16:00 - Closing
+
+On screen: final application walkthrough, Postman collection, issue notes, then repository tree
+
+So overall, my goal in this challenge was not only to make the application work, but also to make it more reliable and easier to understand.
+
+On the backend, I focused on correct API behavior, validation, error handling, a cleaner domain model, and better query performance.
+On the frontend, I focused on stable state handling, cleaner polling, better API integration, and clearer loading and error feedback.
+
+I also tried to keep the trade-offs explicit.
+In some places, I chose the simpler solution because it fit the scope of the challenge, while still keeping the behavior correct.
+
+If I had more time, the next things I would improve are:
+
+- add clearer config profiles for different environments
+- move further toward an API-first design with a clearer contract between backend and frontend
+- add contract tests for API responses and error cases
+- use more DTO projections for backend read endpoints
+- add integration tests for backend services and repositories
+- add end-to-end tests for the main frontend flows
+- improve frontend state handling for polling and async requests
+- add a `useDelayedLoading` pattern for smoother loading states
+- clean up the frontend structure by separating features, API logic, and reusable UI parts more clearly
+- improve logging and make errors easier to trace
+
+What mattered most to me here was the end-to-end review.
+Instead of treating the issues as isolated bugs, I looked at the full system: API contract, data model, database behavior, frontend state flow, and user experience.
+
+That is the walkthrough.
+Thank you for your time.
